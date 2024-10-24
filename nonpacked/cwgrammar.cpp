@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS  // for using sscanf in VS
 /*******************************************************************
 * N.Kozak // Lviv'2024 // example syntax analysis by boost::spirit *
-*                         file: cwsyntax.cpp                       *
+*                         file: cwgrammar.cpp                      *
 *                                                  (draft version) *
 ********************************************************************/
 #include <iostream>
