@@ -21,7 +21,7 @@ namespace phx = boost::phoenix;
 
 template <typename Iterator>
 struct cwgrammar : qi::grammar<Iterator> {
-    cwgrammar(std::ostringstream& error_stream): cwgrammar::base_type(program), error_stream_(error_stream) {
+    cwgrammar(std::ostringstream& error_stream) : cwgrammar::base_type(program), error_stream_(error_stream) {
         //
         recursive_descent_end_point = SAME_RULE(tokenRECURSIVEDESCENTENDPOINT);
         //
@@ -64,9 +64,10 @@ struct cwgrammar : qi::grammar<Iterator> {
         low_prioryty_action = recursive_descent_end_point | less_or_equal_action | greater_or_equal_action | equal_action | not_equal_action;
         low_prioryty_expression = low_prioryty_left_expression >> *low_prioryty_action;
         //
-        group_expression = tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> groupGROUPEXPRESSIONEND;
+        group_expression = tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> tokenGROUPEXPRESSIONEND;
         //
-        bind = low_prioryty_expression >> tokenBIND >> ident_write;
+        bind_right_to_left = ident_write >> tokenRLBIND >> low_prioryty_expression;
+        bind_left_to_right = low_prioryty_expression >> tokenLRBIND >> ident_write;
         //
         if_expression = SAME_RULE(low_prioryty_expression); // !!!
         body_for_true = tokenTHEN >> *statement >> tokenSEMICOLON;
@@ -75,30 +76,36 @@ struct cwgrammar : qi::grammar<Iterator> {
         //
         cycle_begin_expression = SAME_RULE(low_prioryty_expression);
         cycle_counter = SAME_RULE(ident);
+        cycle_counter_rl_init = cycle_counter >> tokenRLBIND >> cycle_begin_expression; // NEW
+        cycle_counter_lr_init = cycle_begin_expression >> tokenLRBIND >> cycle_counter; // NEW
+        cycle_counter_init = cycle_counter_rl_init | cycle_counter_lr_init; // NEW
         cycle_counter_last_value = SAME_RULE(value);
         cycle_body = tokenDO >> statement >> *statement;
-        forto_cycle = tokenFOR >> cycle_begin_expression >> tokenBIND >> cycle_counter >> tokenTO >> cycle_counter_last_value >> cycle_body >> tokenSEMICOLON;
+        forto_cycle = tokenFOR >> cycle_counter_init >> tokenTO >> cycle_counter_last_value >> cycle_body >> tokenSEMICOLON;
         //
+        continue_while = tokenCONTINUE >> tokenWHILE;
+        exit_while = tokenEXIT >> tokenWHILE;
+        statement_in_while_body = statement | continue_while | exit_while;
         while_cycle_head_expression = SAME_RULE(low_prioryty_expression);
-        while_cycle = tokenWHILE >> while_cycle_head_expression >> *statement >> tokenSEMICOLON;
+        while_cycle = tokenWHILE >> while_cycle_head_expression >> *statement_in_while_body >> tokenEND >> tokenWHILE;
         //
-        do_while_cycle_cond = SAME_RULE(low_prioryty_expression);
-        do_while_cycle = tokenDO >> *statement >> tokenWHILE >> do_while_cycle_cond;
+        repeat_until_cycle_cond = SAME_RULE(group_expression);
+        repeat_until_cycle = tokenREPEAT >> *statement >> tokenUNTIL >> repeat_until_cycle_cond;
         //
         input =
 #ifdef DEBUG__IF_ERROR
-            qi::eps > 
+            qi::eps >
 #endif
-            tokenGET >> tokenGROUPEXPRESSIONBEGIN >> ident_write >> groupGROUPEXPRESSIONEND;
+            tokenGET >> tokenGROUPEXPRESSIONBEGIN >> ident_write >> tokenGROUPEXPRESSIONEND;
 #ifdef DEBUG__IF_ERROR
         input.name("input");
         tokenGET.name("tokenGET");
         tokenGROUPEXPRESSIONBEGIN.name("tokenGROUPEXPRESSIONBEGIN");
         ident_write.name("ident_write");
-        groupGROUPEXPRESSIONEND.name("groupGROUPEXPRESSIONEND");
+        tokenGROUPEXPRESSIONEND.name("tokenGROUPEXPRESSIONEND");
 #endif
-        output = tokenPUT >> tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> groupGROUPEXPRESSIONEND;
-        statement = recursive_descent_end_point | bind | cond_block | forto_cycle | while_cycle | do_while_cycle | labeled_point | goto_label | input | output;
+        output = tokenPUT >> tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> tokenGROUPEXPRESSIONEND;
+        statement = recursive_descent_end_point | bind_right_to_left | bind_left_to_right | cond_block | forto_cycle | while_cycle | repeat_until_cycle | labeled_point | goto_label | input | output;
         program = tokenNAME >> program_name >> tokenSEMICOLON >> tokenBODY >> tokenDATA >> (-declaration) >> tokenSEMICOLON >> *statement >> tokenEND;
         //
         digit = digit_0 | digit_1 | digit_2 | digit_3 | digit_4 | digit_5 | digit_6 | digit_7 | digit_8 | digit_9;
@@ -111,7 +118,7 @@ struct cwgrammar : qi::grammar<Iterator> {
         label = letter_in_lower_case >> *letter_in_lower_case >> STRICT_BOUNDARIES;
         //
         sign = sign_plus | sign_minus;
-        sign_plus  = '-';
+        sign_plus = '-';
         sign_minus = '+';
         //
         digit_0 = '0';
@@ -143,8 +150,9 @@ struct cwgrammar : qi::grammar<Iterator> {
         tokenDIV = "DIV" >> STRICT_BOUNDARIES;
         tokenMOD = "MOD" >> STRICT_BOUNDARIES;
         tokenGROUPEXPRESSIONBEGIN = "(" >> BOUNDARIES;
-        groupGROUPEXPRESSIONEND = ")" >> BOUNDARIES;
-        tokenBIND = ">>" >> BOUNDARIES;
+        tokenGROUPEXPRESSIONEND = ")" >> BOUNDARIES;
+        tokenRLBIND = "<<" >> BOUNDARIES;
+        tokenLRBIND = ">>" >> BOUNDARIES;
         tokenTHEN = "THEN" >> STRICT_BOUNDARIES;
         tokenELSE = "ELSE" >> STRICT_BOUNDARIES;
         tokenIF = "IF" >> STRICT_BOUNDARIES;
@@ -152,24 +160,28 @@ struct cwgrammar : qi::grammar<Iterator> {
         tokenFOR = "FOR" >> STRICT_BOUNDARIES;
         tokenTO = "TO" >> STRICT_BOUNDARIES;
         tokenWHILE = "WHILE" >> STRICT_BOUNDARIES;
+        tokenCONTINUE = "CONTINUE" >> STRICT_BOUNDARIES;
+        tokenEXIT = "EXIT" >> STRICT_BOUNDARIES;
+        tokenREPEAT = "REPEAT" >> STRICT_BOUNDARIES;
+        tokenUNTIL = "UNTIL" >> STRICT_BOUNDARIES;
         tokenGET = "GET" >> STRICT_BOUNDARIES;
         tokenPUT = "PUT" >> STRICT_BOUNDARIES;
         tokenNAME = "NAME" >> STRICT_BOUNDARIES;
         tokenBODY = "BODY" >> STRICT_BOUNDARIES;
         tokenDATA = "DATA" >> STRICT_BOUNDARIES;
-        tokenEND  = "END" >> STRICT_BOUNDARIES;
+        tokenEND = "END" >> STRICT_BOUNDARIES;
         tokenSEMICOLON = ";" >> BOUNDARIES;
         // 
         //
         STRICT_BOUNDARIES = (BOUNDARY >> *(BOUNDARY)) | (!(qi::alpha | qi::char_("_")));
-        BOUNDARIES =  (BOUNDARY >> *(BOUNDARY) | NO_BOUNDARY);
+        BOUNDARIES = (BOUNDARY >> *(BOUNDARY) | NO_BOUNDARY);
         BOUNDARY = BOUNDARY_SPACE | BOUNDARY_TAB | BOUNDARY_CARRIAGE_RETURN | BOUNDARY_LINE_FEED | BOUNDARY_NULL;
-        BOUNDARY_SPACE           = " ";
-        BOUNDARY_TAB             = "\t";
+        BOUNDARY_SPACE = " ";
+        BOUNDARY_TAB = "\t";
         BOUNDARY_CARRIAGE_RETURN = "\r";
-        BOUNDARY_LINE_FEED       = "\n";
-        BOUNDARY_NULL            = "\0";
-        NO_BOUNDARY              = "";
+        BOUNDARY_LINE_FEED = "\n";
+        BOUNDARY_NULL = "\0";
+        NO_BOUNDARY = "";
         //
         tokenUNDERSCORE = "_";
         //
@@ -236,7 +248,7 @@ struct cwgrammar : qi::grammar<Iterator> {
     }
     std::ostringstream& error_stream_;
 
-    qi::rule<Iterator> 
+    qi::rule<Iterator>
         recursive_descent_end_point,
         value_read,
         ident_read,
@@ -272,28 +284,35 @@ struct cwgrammar : qi::grammar<Iterator> {
         low_prioryty_action,
         low_prioryty_expression,
         group_expression,
-        bind,
+        bind_right_to_left,
+        bind_left_to_right,
         if_expression,
         body_for_true,
         body_for_false,
         cond_block,
         cycle_begin_expression,
         cycle_counter,
+        cycle_counter_rl_init,       // NEW
+        cycle_counter_lr_init,       // NEW
+        cycle_counter_init,          // NEW
         cycle_counter_last_value,
         cycle_body,
         forto_cycle,
         while_cycle_head_expression,
         while_cycle,
-        do_while_cycle_cond,
-        do_while_cycle,
+        continue_while,              // NEW
+        exit_while,                  // NEW
+        statement_in_while_body,     // NEW
+        repeat_until_cycle_cond,
+        repeat_until_cycle,
         input,
         output,
         statement,
         program,
         //
-        tokenRECURSIVEDESCENTENDPOINT, tokenCOLON, tokenGOTO, tokenINTEGER16, tokenCOMMA, tokenNOT, tokenAND, tokenOR, tokenEQUAL, tokenNOTEQUAL, tokenLESSOREQUAL, 
-        tokenGREATEROREQUAL, tokenPLUS, tokenMINUS, tokenMUL, tokenDIV, tokenMOD, tokenGROUPEXPRESSIONBEGIN, groupGROUPEXPRESSIONEND, tokenBIND, tokenTHEN, 
-        tokenELSE, tokenIF, tokenDO, tokenFOR, tokenTO, tokenWHILE, tokenGET, tokenPUT, tokenNAME, tokenBODY, tokenDATA, tokenEND, tokenSEMICOLON,
+        tokenRECURSIVEDESCENTENDPOINT, tokenCOLON, tokenGOTO, tokenINTEGER16, tokenCOMMA, tokenNOT, tokenAND, tokenOR, tokenEQUAL, tokenNOTEQUAL, tokenLESSOREQUAL,
+        tokenGREATEROREQUAL, tokenPLUS, tokenMINUS, tokenMUL, tokenDIV, tokenMOD, tokenGROUPEXPRESSIONBEGIN, tokenGROUPEXPRESSIONEND, tokenRLBIND, tokenLRBIND, tokenTHEN,
+        tokenELSE, tokenIF, tokenDO, tokenFOR, tokenTO, tokenWHILE, tokenCONTINUE, tokenEXIT, tokenREPEAT, tokenUNTIL, tokenGET, tokenPUT, tokenNAME, tokenBODY, tokenDATA, tokenEND, tokenSEMICOLON,
         //
         STRICT_BOUNDARIES, BOUNDARIES, BOUNDARY, BOUNDARY_SPACE, BOUNDARY_TAB, BOUNDARY_CARRIAGE_RETURN, BOUNDARY_LINE_FEED, BOUNDARY_NULL,
         NO_BOUNDARY,
@@ -306,7 +325,6 @@ struct cwgrammar : qi::grammar<Iterator> {
         tokenUNDERSCORE,
         a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
         A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z;
-
 };
 
 // after using this function use free(void *) function to release text buffer
