@@ -118,8 +118,8 @@ struct cwgrammar : qi::grammar<Iterator> {
         label = letter_in_lower_case >> *letter_in_lower_case >> STRICT_BOUNDARIES;
         //
         sign = sign_plus | sign_minus;
-        sign_plus = '-';
-        sign_minus = '+';
+        sign_plus = '-' >> BOUNDARIES;
+        sign_minus = '+' >> BOUNDARIES;
         //
         digit_0 = '0';
         digit_1 = '1';
