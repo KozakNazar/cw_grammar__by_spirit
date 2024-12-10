@@ -23,62 +23,36 @@ template <typename Iterator>
 struct cwgrammar : qi::grammar<Iterator> {
     cwgrammar(std::ostringstream& error_stream) : cwgrammar::base_type(program), error_stream_(error_stream) {
         //
-        recursive_descent_end_point = SAME_RULE(tokenRECURSIVEDESCENTENDPOINT);
-        //
-        value_read = SAME_RULE(value);
-        ident_read = SAME_RULE(ident);
-        ident_write = SAME_RULE(ident);
-        //
         labeled_point = label >> tokenCOLON;
         goto_label = tokenGOTO >> label;
         program_name = SAME_RULE(ident);
         value_type = SAME_RULE(tokenINTEGER16);
-        declaration_ident = SAME_RULE(ident);
         other_declaration_ident = tokenCOMMA >> ident;
-        declaration = value_type >> declaration_ident >> *other_declaration_ident;
-        operation_not = tokenNOT >> inseparable_expression;
-        and_action = tokenAND >> inseparable_expression;
-        or_action = tokenOR >> high_prioryty_expression;
-        equal_action = tokenEQUAL >> middle_prioryty_expression;
-        not_equal_action = tokenNOTEQUAL >> middle_prioryty_expression;
-        less_or_equal_action = tokenLESSOREQUAL >> middle_prioryty_expression;
-        greater_or_equal_action = tokenGREATEROREQUAL >> middle_prioryty_expression;
-        add_action = tokenPLUS >> high_prioryty_expression;
-        sub_action = tokenMINUS >> high_prioryty_expression;
-        mul_action = tokenMUL >> inseparable_expression;
-        div_action = tokenDIV >> inseparable_expression;
-        mod_action = tokenMOD >> inseparable_expression;
-        unary_operation = SAME_RULE(operation_not);
+        declaration = value_type >> ident >> *other_declaration_ident;
         //
-        inseparable_expression = group_expression | unary_operation | ident_read | value_read;
+        unary_operator = tokenNOT | tokenMINUS | tokenPLUS;
+        unary_operation = unary_operator >> expression;
+        binary_operator = tokenAND | tokenOR | tokenEQUAL | tokenNOTEQUAL | tokenLESSOREQUAL | tokenGREATEROREQUAL | tokenPLUS | tokenMINUS | tokenMUL | tokenDIV | tokenMOD;
+        binary_action = binary_operator >> expression;
         //
-        high_prioryty_left_expression = group_expression | unary_operation | ident_read | value_read;
-        high_prioryty_action = recursive_descent_end_point | mul_action | div_action | mod_action | and_action;
-        high_prioryty_expression = high_prioryty_left_expression >> *high_prioryty_action;
+        left_expression = group_expression | unary_operation | ident | value;
+        expression = left_expression >> *binary_action;
         //
-        middle_prioryty_left_expression = high_prioryty_expression | group_expression | unary_operation | ident_read | value_read;
-        middle_prioryty_action = recursive_descent_end_point | add_action | sub_action | or_action;
-        middle_prioryty_expression = middle_prioryty_left_expression >> *middle_prioryty_action;
+        group_expression = tokenGROUPEXPRESSIONBEGIN >> expression >> tokenGROUPEXPRESSIONEND;
         //
-        low_prioryty_left_expression = middle_prioryty_expression | high_prioryty_expression | group_expression | unary_operation | ident_read | value_read;
-        low_prioryty_action = recursive_descent_end_point | less_or_equal_action | greater_or_equal_action | equal_action | not_equal_action;
-        low_prioryty_expression = low_prioryty_left_expression >> *low_prioryty_action;
+        bind_right_to_left = ident >> tokenRLBIND >> expression;
+        bind_left_to_right = expression >> tokenLRBIND >> ident;
         //
-        group_expression = tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> tokenGROUPEXPRESSIONEND;
-        //
-        bind_right_to_left = ident_write >> tokenRLBIND >> low_prioryty_expression;
-        bind_left_to_right = low_prioryty_expression >> tokenLRBIND >> ident_write;
-        //
-        if_expression = SAME_RULE(low_prioryty_expression); // !!!
+        if_expression = SAME_RULE(expression);
         body_for_true = tokenTHEN >> *statement >> tokenSEMICOLON;
         body_for_false = tokenELSE >> *statement >> tokenSEMICOLON;
         cond_block = tokenIF >> if_expression >> body_for_true >> (-body_for_false);
         //
-        cycle_begin_expression = SAME_RULE(low_prioryty_expression);
+        cycle_begin_expression = SAME_RULE(expression);
         cycle_counter = SAME_RULE(ident);
-        cycle_counter_rl_init = cycle_counter >> tokenRLBIND >> cycle_begin_expression; // NEW
-        cycle_counter_lr_init = cycle_begin_expression >> tokenLRBIND >> cycle_counter; // NEW
-        cycle_counter_init = cycle_counter_rl_init | cycle_counter_lr_init; // NEW
+        cycle_counter_rl_init = cycle_counter >> tokenRLBIND >> cycle_begin_expression;
+        cycle_counter_lr_init = cycle_begin_expression >> tokenLRBIND >> cycle_counter;
+        cycle_counter_init = cycle_counter_rl_init | cycle_counter_lr_init;
         cycle_counter_last_value = SAME_RULE(value);
         cycle_body = tokenDO >> statement >> *statement;
         forto_cycle = tokenFOR >> cycle_counter_init >> tokenTO >> cycle_counter_last_value >> cycle_body >> tokenSEMICOLON;
@@ -86,7 +60,7 @@ struct cwgrammar : qi::grammar<Iterator> {
         continue_while = tokenCONTINUE >> tokenWHILE;
         exit_while = tokenEXIT >> tokenWHILE;
         statement_in_while_body = statement | continue_while | exit_while;
-        while_cycle_head_expression = SAME_RULE(low_prioryty_expression);
+        while_cycle_head_expression = SAME_RULE(expression);
         while_cycle = tokenWHILE >> while_cycle_head_expression >> *statement_in_while_body >> tokenEND >> tokenWHILE;
         //
         repeat_until_cycle_cond = SAME_RULE(group_expression);
@@ -96,16 +70,16 @@ struct cwgrammar : qi::grammar<Iterator> {
 #ifdef DEBUG__IF_ERROR
             qi::eps >
 #endif
-            tokenGET >> tokenGROUPEXPRESSIONBEGIN >> ident_write >> tokenGROUPEXPRESSIONEND;
+            tokenGET >> tokenGROUPEXPRESSIONBEGIN >> ident >> tokenGROUPEXPRESSIONEND;
 #ifdef DEBUG__IF_ERROR
         input.name("input");
         tokenGET.name("tokenGET");
         tokenGROUPEXPRESSIONBEGIN.name("tokenGROUPEXPRESSIONBEGIN");
-        ident_write.name("ident_write");
+        ident.name("ident");
         tokenGROUPEXPRESSIONEND.name("tokenGROUPEXPRESSIONEND");
 #endif
-        output = tokenPUT >> tokenGROUPEXPRESSIONBEGIN >> low_prioryty_expression >> tokenGROUPEXPRESSIONEND;
-        statement = recursive_descent_end_point | bind_right_to_left | bind_left_to_right | cond_block | forto_cycle | while_cycle | repeat_until_cycle | labeled_point | goto_label | input | output;
+        output = tokenPUT >> tokenGROUPEXPRESSIONBEGIN >> expression >> tokenGROUPEXPRESSIONEND;
+        statement = bind_right_to_left | bind_left_to_right | cond_block | forto_cycle | while_cycle | repeat_until_cycle | labeled_point | goto_label | input | output;
         program = tokenNAME >> program_name >> tokenSEMICOLON >> tokenBODY >> tokenDATA >> (-declaration) >> tokenSEMICOLON >> *statement >> tokenEND;
         //
         digit = digit_0 | digit_1 | digit_2 | digit_3 | digit_4 | digit_5 | digit_6 | digit_7 | digit_8 | digit_9;
@@ -132,7 +106,6 @@ struct cwgrammar : qi::grammar<Iterator> {
         digit_8 = '8';
         digit_9 = '9';
         //
-        tokenRECURSIVEDESCENTENDPOINT = "RECURSIVE_DESCENT_END_POINT" >> STRICT_BOUNDARIES; // TODO:...
         tokenCOLON = ":" >> BOUNDARIES;
         tokenGOTO = "GOTO" >> STRICT_BOUNDARIES;
         tokenINTEGER16 = "INTEGER16" >> STRICT_BOUNDARIES;
@@ -249,40 +222,18 @@ struct cwgrammar : qi::grammar<Iterator> {
     std::ostringstream& error_stream_;
 
     qi::rule<Iterator>
-        recursive_descent_end_point,
-        value_read,
-        ident_read,
-        ident_write,
         labeled_point,
         goto_label,
         program_name,
         value_type,
-        declaration_ident,
         other_declaration_ident,
         declaration,
-        operation_not,
-        and_action,
-        or_action,
-        equal_action,
-        not_equal_action,
-        less_or_equal_action,
-        greater_or_equal_action,
-        add_action,
-        sub_action,
-        mul_action,
-        div_action,
-        mod_action,
+        unary_operator,
         unary_operation,
-        inseparable_expression,
-        high_prioryty_left_expression,
-        high_prioryty_action,
-        high_prioryty_expression,
-        middle_prioryty_left_expression,
-        middle_prioryty_action,
-        middle_prioryty_expression,
-        low_prioryty_left_expression,
-        low_prioryty_action,
-        low_prioryty_expression,
+        binary_operator,
+        binary_action,  
+        left_expression,
+        expression,
         group_expression,
         bind_right_to_left,
         bind_left_to_right,
@@ -292,17 +243,17 @@ struct cwgrammar : qi::grammar<Iterator> {
         cond_block,
         cycle_begin_expression,
         cycle_counter,
-        cycle_counter_rl_init,       // NEW
-        cycle_counter_lr_init,       // NEW
-        cycle_counter_init,          // NEW
+        cycle_counter_rl_init,
+        cycle_counter_lr_init,
+        cycle_counter_init,
         cycle_counter_last_value,
         cycle_body,
         forto_cycle,
         while_cycle_head_expression,
         while_cycle,
-        continue_while,              // NEW
-        exit_while,                  // NEW
-        statement_in_while_body,     // NEW
+        continue_while,
+        exit_while,
+        statement_in_while_body,
         repeat_until_cycle_cond,
         repeat_until_cycle,
         input,
@@ -310,7 +261,7 @@ struct cwgrammar : qi::grammar<Iterator> {
         statement,
         program,
         //
-        tokenRECURSIVEDESCENTENDPOINT, tokenCOLON, tokenGOTO, tokenINTEGER16, tokenCOMMA, tokenNOT, tokenAND, tokenOR, tokenEQUAL, tokenNOTEQUAL, tokenLESSOREQUAL,
+        tokenCOLON, tokenGOTO, tokenINTEGER16, tokenCOMMA, tokenNOT, tokenAND, tokenOR, tokenEQUAL, tokenNOTEQUAL, tokenLESSOREQUAL,
         tokenGREATEROREQUAL, tokenPLUS, tokenMINUS, tokenMUL, tokenDIV, tokenMOD, tokenGROUPEXPRESSIONBEGIN, tokenGROUPEXPRESSIONEND, tokenRLBIND, tokenLRBIND, tokenTHEN,
         tokenELSE, tokenIF, tokenDO, tokenFOR, tokenTO, tokenWHILE, tokenCONTINUE, tokenEXIT, tokenREPEAT, tokenUNTIL, tokenGET, tokenPUT, tokenNAME, tokenBODY, tokenDATA, tokenEND, tokenSEMICOLON,
         //
@@ -326,57 +277,6 @@ struct cwgrammar : qi::grammar<Iterator> {
         a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
         A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z;
 };
-
-// after using this function use free(void *) function to release text buffer
-size_t loadSource(char** text, char* fileName) {
-    if (!fileName) {
-        printf("No input file name\r\n");
-        return 0;
-    }
-
-    FILE* file = fopen(fileName, "rb");
-
-    if (file == NULL) {
-        printf("File not loaded\r\n");
-        return 0;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long fileSize_ = ftell(file);
-    if (fileSize_ >= MAX_TEXT_SIZE) {
-        printf("the file(%ld bytes) is larger than %d bytes\r\n", fileSize_, MAX_TEXT_SIZE);
-        fclose(file);
-        exit(2); // TODO: ...
-        //return 0;
-    }
-    size_t fileSize = fileSize_;
-    rewind(file);
-
-    if (!text) {
-        printf("Load source error\r\n");
-        return 0;
-    }
-    *text = (char*)malloc(sizeof(char) * (fileSize + 1));
-    if (*text == NULL) {
-        fputs("Memory error", stderr);
-        fclose(file);
-        exit(2); // TODO: ...
-        //return 0;
-    }
-
-    size_t result = fread(*text, sizeof(char), fileSize, file);
-    if (result != fileSize) {
-        fputs("Reading error", stderr);
-        fclose(file);
-        exit(3); // TODO: ...
-        //return 0;
-    }
-    (*text)[fileSize] = '\0';
-
-    fclose(file);
-
-    return fileSize;
-}
 
 int main(){
     char* text_;
