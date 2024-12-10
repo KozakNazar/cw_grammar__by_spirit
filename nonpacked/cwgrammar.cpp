@@ -2,7 +2,7 @@
 /*******************************************************************
 * N.Kozak // Lviv'2024 // example syntax analysis by boost::spirit *
 *                         file: cwgrammar.cpp                      *
-*                                                  (draft version) *
+*                                           (0.03v/draft version ) *
 ********************************************************************/
 #include <iostream>
 #include <sstream>  // for std::ostringstream
