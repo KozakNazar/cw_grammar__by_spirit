@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS  // for using sscanf in VS
 /*******************************************************************
 * N.Kozak // Lviv'2024 // example syntax analysis by boost::spirit *
-*                         file: cwgrammar.cpp                      *
-*                                           (0.03v/draft version ) *
+*                         file: cwgrammar__one_file.cpp            *
+*                                          (0.032v/draft version ) *
 ********************************************************************/
 #include <iostream>
 #include <sstream>  // for std::ostringstream
@@ -44,9 +44,9 @@ struct cwgrammar : qi::grammar<Iterator> {
         bind_left_to_right = expression >> tokenLRBIND >> ident;
         //
         if_expression = SAME_RULE(expression);
-        body_for_true = tokenTHEN >> *statement >> tokenSEMICOLON;
+        body_for_true = *statement >> tokenSEMICOLON;
         body_for_false = tokenELSE >> *statement >> tokenSEMICOLON;
-        cond_block = tokenIF >> if_expression >> body_for_true >> (-body_for_false);
+        cond_block = tokenIF >> tokenGROUPEXPRESSIONBEGIN >> if_expression >> tokenGROUPEXPRESSIONEND >> body_for_true >> (-body_for_false);
         //
         cycle_begin_expression = SAME_RULE(expression);
         cycle_counter = SAME_RULE(ident);
@@ -126,7 +126,6 @@ struct cwgrammar : qi::grammar<Iterator> {
         tokenGROUPEXPRESSIONEND = ")" >> BOUNDARIES;
         tokenRLBIND = "<<" >> BOUNDARIES;
         tokenLRBIND = ">>" >> BOUNDARIES;
-        tokenTHEN = "THEN" >> STRICT_BOUNDARIES;
         tokenELSE = "ELSE" >> STRICT_BOUNDARIES;
         tokenIF = "IF" >> STRICT_BOUNDARIES;
         tokenDO = "DO" >> STRICT_BOUNDARIES;
@@ -262,7 +261,7 @@ struct cwgrammar : qi::grammar<Iterator> {
         program,
         //
         tokenCOLON, tokenGOTO, tokenINTEGER16, tokenCOMMA, tokenNOT, tokenAND, tokenOR, tokenEQUAL, tokenNOTEQUAL, tokenLESSOREQUAL,
-        tokenGREATEROREQUAL, tokenPLUS, tokenMINUS, tokenMUL, tokenDIV, tokenMOD, tokenGROUPEXPRESSIONBEGIN, tokenGROUPEXPRESSIONEND, tokenRLBIND, tokenLRBIND, tokenTHEN,
+        tokenGREATEROREQUAL, tokenPLUS, tokenMINUS, tokenMUL, tokenDIV, tokenMOD, tokenGROUPEXPRESSIONBEGIN, tokenGROUPEXPRESSIONEND, tokenRLBIND, tokenLRBIND,
         tokenELSE, tokenIF, tokenDO, tokenFOR, tokenTO, tokenWHILE, tokenCONTINUE, tokenEXIT, tokenREPEAT, tokenUNTIL, tokenGET, tokenPUT, tokenNAME, tokenBODY, tokenDATA, tokenEND, tokenSEMICOLON,
         //
         STRICT_BOUNDARIES, BOUNDARIES, BOUNDARY, BOUNDARY_SPACE, BOUNDARY_TAB, BOUNDARY_CARRIAGE_RETURN, BOUNDARY_LINE_FEED, BOUNDARY_NULL,
