@@ -613,7 +613,7 @@ int main() {
     if (fileName[0] == 'f' && fileName[1] == '\0') {
         fileName[1] = 'i';
     }
-    size_t sourceSize = loadSource(&text_, (char*)"file1.cwl");
+    size_t sourceSize = loadSource(&text_, fileName);
     if (!sourceSize) {
         printf("Press Enter to exit . . .");
         (void)getchar();
