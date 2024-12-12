@@ -554,6 +554,56 @@ other_declaration_ident_____iteration
         A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z;
 };
 
+// after using this function use free(void *) function to release text buffer
+size_t loadSource(char** text, char* fileName) {
+    if (!fileName) {
+        printf("No input file name\r\n");
+        return 0;
+    }
+
+    FILE* file = fopen(fileName, "rb");
+
+    if (file == NULL) {
+        printf("File not loaded\r\n");
+        return 0;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long fileSize_ = ftell(file);
+    if (fileSize_ >= MAX_TEXT_SIZE) {
+        printf("the file(%ld bytes) is larger than %d bytes\r\n", fileSize_, MAX_TEXT_SIZE);
+        fclose(file);
+        exit(2); // TODO: ...
+        //return 0;
+    }
+    size_t fileSize = fileSize_;
+    rewind(file);
+
+    if (!text) {
+        printf("Load source error\r\n");
+        return 0;
+    }
+    *text = (char*)malloc(sizeof(char) * (fileSize + 1));
+    if (*text == NULL) {
+        fputs("Memory error", stderr);
+        fclose(file);
+        exit(2); // TODO: ...
+        //return 0;
+    }
+
+    size_t result = fread(*text, sizeof(char), fileSize, file);
+    if (result != fileSize) {
+        fputs("Reading error", stderr);
+        fclose(file);
+        exit(3); // TODO: ...
+        //return 0;
+    }
+    (*text)[fileSize] = '\0';
+
+    fclose(file);
+
+    return fileSize;
+}
 
 int main() {
     char* text_;
