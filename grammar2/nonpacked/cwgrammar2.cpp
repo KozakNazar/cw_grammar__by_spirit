@@ -311,7 +311,17 @@ tokenWHILE__expression__statement_in_while_body____iteration_after_two,\
 tokenFOR__cycle_counter_init,\
 tokenTO__cycle_counter_last_value,\
 tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value,\
-cycle_body__tokenSEMICOLON
+cycle_body__tokenSEMICOLON,\
+\
+tokenELSE__statement,\
+tokenELSE__statement____iteration_after_two,\
+tokenIF__tokenGROUPEXPRESSIONBEGIN,\
+expression__tokenGROUPEXPRESSIONEND,\
+tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND,\
+body_for_true__body_for_false,\
+\
+tokenGROUPEXPRESSIONBEGIN__expression,\
+binary_action____iteration_after_two
 
 //tokenNAME__program_name,\
 //tokenSEMICOLON__tokenBODY,\
@@ -349,7 +359,7 @@ cycle_body__tokenSEMICOLON
         unary_operator = tokenNOT                       // + (!)
             | tokenMINUS                    // + (!)
             | tokenPLUS;                    // + (!)
-        unary_operation = unary_operator >> expression; // +
+        //unary_operation = unary_operator >> expression; // +
         binary_operator = tokenAND                      // + (!)
             | tokenOR                      // + (!)
             | tokenEQUAL                   // + (!)
@@ -361,29 +371,47 @@ cycle_body__tokenSEMICOLON
             | tokenMUL                     // + (!)
             | tokenDIV                     // + (!)
             | tokenMOD;                    // + (!)
-        binary_action = binary_operator >> expression;  // +
+        binary_action = binary_operator >> expression; // +
         //
-        left_expression = group_expression | unary_operation
-            | ident
-            | value;
-        expression = left_expression >> *binary_action;
+        left_expression = tokenGROUPEXPRESSIONBEGIN__expression >> tokenGROUPEXPRESSIONEND            // + (!)
+                        | unary_operator >> expression                                                // + (!)
+                        | ident                                                                       // +
+                        | value;                                                                      // +
+        binary_action____iteration_after_two = binary_action >> binary_action____iteration_after_two  // +
+                                             | binary_action >> binary_action;                        // +
+        expression = left_expression >> binary_action____iteration_after_two                          // +
+                    | left_expression >> binary_action                                                // +
+                    | tokenGROUPEXPRESSIONBEGIN__expression >> tokenGROUPEXPRESSIONEND                // + (!)
+                    | unary_operator >> expression                                                    // + (!)
+                    | ident                                                                           // +
+                    | value;                                                                          // +
         //
-        group_expression = tokenGROUPEXPRESSIONBEGIN >> expression >> tokenGROUPEXPRESSIONEND;
+        tokenGROUPEXPRESSIONBEGIN__expression = tokenGROUPEXPRESSIONBEGIN >> expression;     // + (!)
+        group_expression = tokenGROUPEXPRESSIONBEGIN__expression >> tokenGROUPEXPRESSIONEND; // + (!)
         //
-        bind_right_to_left = ident >> tokenRLBIND >> expression;
-        bind_left_to_right = expression >> tokenLRBIND >> ident;
+        bind_right_to_left = ident >> rl_expression; // + (!)
+        bind_left_to_right = lr_expression >> ident; // + (!)
         //
-        if_expression = SAME_RULE(expression);
-        body_for_true = *statement >> tokenSEMICOLON;
-        body_for_false = tokenELSE >> *statement >> tokenSEMICOLON;
-        cond_block = tokenIF >> tokenGROUPEXPRESSIONBEGIN >> if_expression >> tokenGROUPEXPRESSIONEND >> body_for_true >> (-body_for_false);
+        body_for_true = statement____iteration_after_two >> tokenSEMICOLON                                                                                   // + (!) ( tokenSEMICOLON as nonterminal ! )
+                      | statement >> tokenSEMICOLON                                                                                                          // + (!) ( tokenSEMICOLON as nonterminal ! )
+                      | tokenSEMICOLON;                                                                                                                      // + (!) ( tokenSEMICOLON as    terminal ! )
+        tokenELSE__statement = tokenELSE >> statement;                                                                                                       // + (!)
+        tokenELSE__statement____iteration_after_two = tokenELSE >> statement____iteration_after_two;                                                         // + (!)
+        body_for_false = tokenELSE__statement____iteration_after_two >> tokenSEMICOLON                                                                       // + (!)
+                       | tokenELSE__statement >> tokenSEMICOLON                                                                                              // + (!)
+                       | tokenELSE >> tokenSEMICOLON;                                                                                                        // + (!)
+        tokenIF__tokenGROUPEXPRESSIONBEGIN = tokenIF >> tokenGROUPEXPRESSIONBEGIN;                                                                           // + (!)
+        expression__tokenGROUPEXPRESSIONEND = expression >> tokenGROUPEXPRESSIONEND;                                                                         // +
+        tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND = tokenIF__tokenGROUPEXPRESSIONBEGIN >> expression__tokenGROUPEXPRESSIONEND; // +
+        body_for_true__body_for_false = body_for_true >> body_for_false;                                                                                     // +
+        cond_block = tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND >> body_for_true__body_for_false                                // +
+                   | tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND >> body_for_true;                                               // +
         //
-        //cycle_begin_expression = SAME_RULE(expression);
-        cycle_counter = SAME_RULE(ident);// + (!)
-        cycle_counter_rl_expression = tokenRLBIND >> expression;                                                                             // + (!)
-        cycle_counter_lr_expression = expression >> tokenLRBIND;                                                                             // + (!)
-        cycle_counter_init = cycle_counter >> cycle_counter_rl_expression                                                                    // +
-                           | cycle_counter_lr_expression >> cycle_counter;                                                                   // +
+        cycle_counter = SAME_RULE(ident);                                                                                                    // + (!)
+        rl_expression = tokenRLBIND >> expression;                                                                             // + (!)
+        lr_expression = expression >> tokenLRBIND;                                                                             // + (!)
+        cycle_counter_init = cycle_counter >> rl_expression                                                                    // +
+                           | lr_expression >> cycle_counter;                                                                   // +
         cycle_counter_last_value = SAME_RULE(value);                                                                                         // + (!)
         cycle_body = tokenDO >> statement_in_while_body____iteration_after_two                                                               // + (!)
                     | tokenDO >> statement;                                                                                                  // + (!)
@@ -402,7 +430,7 @@ cycle_body__tokenSEMICOLON
         tokenWHILE__expression__statement_in_while_body = tokenWHILE__expression >> statement_in_while_body;                                                // + NEW
         tokenWHILE__expression__statement_in_while_body____iteration_after_two = tokenWHILE__expression >> statement_in_while_body____iteration_after_two;  // + NEW
         while_cycle = tokenWHILE__expression__statement_in_while_body____iteration_after_two >> tokenEND__tokenWHILE                                        // + NEW
-                     | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                              // + NEW
+                     | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
                      | tokenWHILE__expression >> tokenEND__tokenWHILE;                                                                                      // + NEW
         //
         tokenUNTIL__group_expression = tokenUNTIL >> group_expression;                                     // + (!)
@@ -621,7 +649,7 @@ cycle_body__tokenSEMICOLON
         other_declaration_ident,
         declaration,
         unary_operator,
-        unary_operation,
+        //unary_operation,
         binary_operator,
         binary_action,
         left_expression,
@@ -629,14 +657,14 @@ cycle_body__tokenSEMICOLON
         group_expression,
         bind_right_to_left,
         bind_left_to_right,
-        if_expression,
+        //if_expression,
         body_for_true,
         body_for_false,
         cond_block,
         //cycle_begin_expression,
         cycle_counter,
-        cycle_counter_rl_expression,
-        cycle_counter_lr_expression,
+        rl_expression,
+        lr_expression,
         cycle_counter_init,
         cycle_counter_last_value,
         cycle_body,
@@ -721,10 +749,12 @@ size_t loadSource(char** text, char* fileName) {
     return fileSize;
 }
 
+#define DEFAULT_INPUT_FILE "file1.cwl"
+
 int main(){
     char* text_;
-    char fileName[64] = "file1.cwl";
-    std::cout << "Enter file name(Enter \"f\" to use default \"file1.cwl\"):\n";
+    char fileName[64] = DEFAULT_INPUT_FILE;
+    std::cout << "Enter file name(Enter \"f\" to use default \"" DEFAULT_INPUT_FILE "\"):\n";
     std::cin >> fileName;
     if (fileName[0] == 'f' && fileName[1] == '\0') {
         fileName[1] = 'i';
