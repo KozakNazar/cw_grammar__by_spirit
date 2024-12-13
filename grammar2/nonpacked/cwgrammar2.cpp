@@ -4,6 +4,7 @@
 *                         file: cwgrammar2.cpp                     *
 *                                           (0.04v/draft version ) *
 ********************************************************************/
+#include "stdio.h"
 #include <iostream>
 #include <sstream>  // for std::ostringstream
 #include <string>
@@ -281,7 +282,57 @@ template <typename Iterator>
 struct cwgrammar_2 : qi::grammar<Iterator> {
 #define ADDON_RULES_LIST \
 value_type__ident,\
-other_declaration_ident_____iteration
+other_declaration_ident____iteration_after_one,\
+input__first_part,\
+input__second_part,\
+output__first_part,\
+output__second_part,\
+unsigned_value__non_terminal,\
+\
+statement____iteration_after_two,\
+tokenNAME__program_name,\
+tokenSEMICOLON__tokenBODY,\
+tokenDATA__declaration,\
+tokenNAME__program_name__tokenSEMICOLON__tokenBODY,\
+program____part1,\
+statement__tokenEND,\
+statement____iteration_after_two__tokenEND,\
+program____part2,\
+\
+tokenUNTIL__group_expression,\
+tokenREPEAT__statement____iteration_after_two,\
+tokenREPEAT__statement,\
+\
+statement_in_while_body____iteration_after_two,\
+tokenWHILE__expression,\
+tokenEND__tokenWHILE,\
+tokenWHILE__expression__statement_in_while_body,\
+tokenWHILE__expression__statement_in_while_body____iteration_after_two,\
+tokenFOR__cycle_counter_init,\
+tokenTO__cycle_counter_last_value,\
+tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value,\
+cycle_body__tokenSEMICOLON
+
+//tokenNAME__program_name,\
+//tokenSEMICOLON__tokenBODY,\
+//tokenNAME__program_name__tokenSEMICOLON__tokenBODY,\
+//tokenDATA__tokenSEMICOLON,\
+//tokenNAME__program_name__tokenSEMICOLON__tokenBODY__tokenDATA__tokenSEMICOLON,\
+//tokenDATA__declaration,\
+//tokenSEMICOLON__tokenEND,\
+//tokenDATA__declaration__tokenSEMICOLON__tokenEND,\
+//statement____iteration_after_two____tokenEND,\
+//tokenSEMICOLON____statement____iteration_after_two,\
+//tokenSEMICOLON____statement____iteration_after_two____tokenEND,\
+//statement____iteration_after_two,\
+//\
+//\
+//\
+//\
+//tokenNAME__program_name__tokenSEMICOLON__tokenBODY__tokenDATA,\
+//program____part1,\
+//program____part2
+
     cwgrammar_2(std::ostringstream& error_stream) : cwgrammar_2::base_type(program), error_stream_(error_stream) {
         //
         labeled_point = label >> tokenCOLON; // +
@@ -289,10 +340,11 @@ other_declaration_ident_____iteration
         program_name = SAME_RULE(ident); // + (!)
         value_type = SAME_RULE(tokenINTEGER16); // + (!)
         other_declaration_ident = (tokenCOMMA >> ident); // + (!)
-        other_declaration_ident_____iteration = other_declaration_ident >> other_declaration_ident_____iteration // + (!)
+        other_declaration_ident____iteration_after_one = other_declaration_ident >> other_declaration_ident____iteration_after_one // + (!)
             | tokenCOMMA >> ident; // + (!)
         value_type__ident = value_type >> ident; // + (!)
-        declaration = value_type__ident >> other_declaration_ident_____iteration; // +
+        declaration = value_type__ident >> other_declaration_ident____iteration_after_one
+                    | value_type >> ident; // +
         //
         unary_operator = tokenNOT                       // + (!)
             | tokenMINUS                    // + (!)
@@ -311,7 +363,9 @@ other_declaration_ident_____iteration
             | tokenMOD;                    // + (!)
         binary_action = binary_operator >> expression;  // +
         //
-        left_expression = group_expression | unary_operation | ident | value;
+        left_expression = group_expression | unary_operation
+            | ident
+            | value;
         expression = left_expression >> *binary_action;
         //
         group_expression = tokenGROUPEXPRESSIONBEGIN >> expression >> tokenGROUPEXPRESSIONEND;
@@ -324,50 +378,112 @@ other_declaration_ident_____iteration
         body_for_false = tokenELSE >> *statement >> tokenSEMICOLON;
         cond_block = tokenIF >> tokenGROUPEXPRESSIONBEGIN >> if_expression >> tokenGROUPEXPRESSIONEND >> body_for_true >> (-body_for_false);
         //
-        cycle_begin_expression = SAME_RULE(expression);
-        cycle_counter = SAME_RULE(ident);
-        cycle_counter_rl_init = cycle_counter >> tokenRLBIND >> cycle_begin_expression;
-        cycle_counter_lr_init = cycle_begin_expression >> tokenLRBIND >> cycle_counter;
-        cycle_counter_init = cycle_counter_rl_init | cycle_counter_lr_init;
-        cycle_counter_last_value = SAME_RULE(value);
-        cycle_body = tokenDO >> statement >> *statement;
-        forto_cycle = tokenFOR >> cycle_counter_init >> tokenTO >> cycle_counter_last_value >> cycle_body >> tokenSEMICOLON;
+        //cycle_begin_expression = SAME_RULE(expression);
+        cycle_counter = SAME_RULE(ident);// + (!)
+        cycle_counter_rl_expression = tokenRLBIND >> expression;                                                                             // + (!)
+        cycle_counter_lr_expression = expression >> tokenLRBIND;                                                                             // + (!)
+        cycle_counter_init = cycle_counter >> cycle_counter_rl_expression                                                                    // +
+                           | cycle_counter_lr_expression >> cycle_counter;                                                                   // +
+        cycle_counter_last_value = SAME_RULE(value);                                                                                         // + (!)
+        cycle_body = tokenDO >> statement_in_while_body____iteration_after_two                                                               // + (!)
+                    | tokenDO >> statement;                                                                                                  // + (!)
+        tokenFOR__cycle_counter_init = tokenFOR >> cycle_counter_init;                                                                       // + (!)
+        tokenTO__cycle_counter_last_value = tokenTO >> cycle_counter_last_value;                                                             // + (!)
+        tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value = tokenFOR__cycle_counter_init >> tokenTO__cycle_counter_last_value; // +
+        cycle_body__tokenSEMICOLON = cycle_body >> tokenSEMICOLON;                                                                           // + (!)
+        forto_cycle = tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value >> cycle_body__tokenSEMICOLON;                         // +
         //
-        continue_while = tokenCONTINUE >> tokenWHILE;
-        exit_while = tokenEXIT >> tokenWHILE;
-        statement_in_while_body = statement | continue_while | exit_while;
-        while_cycle_head_expression = SAME_RULE(expression);
-        while_cycle = tokenWHILE >> while_cycle_head_expression >> *statement_in_while_body >> tokenEND >> tokenWHILE;
+        continue_while = tokenCONTINUE >> tokenWHILE;                                                                                                       // + (!)
+        exit_while = tokenEXIT >> tokenWHILE;                                                                                                               // + (!)
+        statement_in_while_body____iteration_after_two = statement_in_while_body >> statement_in_while_body____iteration_after_two                          // + NEW
+            | statement_in_while_body >> statement_in_while_body;                                                                                           // + NEW       
+        tokenWHILE__expression = tokenWHILE >> expression;                                                                                                  // + (!) NEW
+        tokenEND__tokenWHILE = tokenEND >> tokenWHILE;                                                                                                      // + (!) NEW
+        tokenWHILE__expression__statement_in_while_body = tokenWHILE__expression >> statement_in_while_body;                                                // + NEW
+        tokenWHILE__expression__statement_in_while_body____iteration_after_two = tokenWHILE__expression >> statement_in_while_body____iteration_after_two;  // + NEW
+        while_cycle = tokenWHILE__expression__statement_in_while_body____iteration_after_two >> tokenEND__tokenWHILE                                        // + NEW
+                     | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                              // + NEW
+                     | tokenWHILE__expression >> tokenEND__tokenWHILE;                                                                                      // + NEW
         //
-        repeat_until_cycle_cond = SAME_RULE(group_expression);
-        repeat_until_cycle = tokenREPEAT >> *statement >> tokenUNTIL >> repeat_until_cycle_cond;
+        tokenUNTIL__group_expression = tokenUNTIL >> group_expression;                                     // + (!)
+        tokenREPEAT__statement____iteration_after_two = tokenREPEAT >> statement____iteration_after_two;   // + (!)
+        tokenREPEAT__statement = tokenREPEAT >> statement;                                                 // + (!)
+        repeat_until_cycle = tokenREPEAT__statement____iteration_after_two >> tokenUNTIL__group_expression // +
+                            | tokenREPEAT__statement >> tokenUNTIL__group_expression                       // +
+                            | tokenREPEAT >> tokenUNTIL__group_expression;                                 // + (!)
         //
+        input__first_part = tokenGET >> tokenGROUPEXPRESSIONBEGIN;          // + (!)
+        input__second_part = ident >> tokenGROUPEXPRESSIONEND;              // + (!)
         input =
 #ifdef DEBUG__IF_ERROR
             qi::eps >
 #endif
-            tokenGET >> tokenGROUPEXPRESSIONBEGIN >> ident >> tokenGROUPEXPRESSIONEND;
+            input__first_part >> input__second_part;                        // +
 #ifdef DEBUG__IF_ERROR
         input.name("input");
-        tokenGET.name("tokenGET");
-        tokenGROUPEXPRESSIONBEGIN.name("tokenGROUPEXPRESSIONBEGIN");
-        ident.name("ident");
-        tokenGROUPEXPRESSIONEND.name("tokenGROUPEXPRESSIONEND");
+        input__first_part.name("input__first_part");
+        input__second_part.name("input__second_part");
 #endif
-        output = tokenPUT >> tokenGROUPEXPRESSIONBEGIN >> expression >> tokenGROUPEXPRESSIONEND;
-        statement = bind_right_to_left | bind_left_to_right | cond_block | forto_cycle | while_cycle | repeat_until_cycle | labeled_point | goto_label | input | output;
-        program = tokenNAME >> program_name >> tokenSEMICOLON >> tokenBODY >> tokenDATA >> (-declaration) >> tokenSEMICOLON >> *statement >> tokenEND;
+        output__first_part = tokenPUT >> tokenGROUPEXPRESSIONBEGIN;         // + (!)
+        output__second_part = expression >> tokenGROUPEXPRESSIONEND;        // + (!)
+        output = output__first_part >> output__second_part;                 // +
+        statement = bind_right_to_left 
+            | bind_left_to_right 
+            | cond_block 
+            | forto_cycle 
+            | while_cycle 
+            | repeat_until_cycle 
+            | labeled_point 
+            | goto_label 
+            | input 
+            | output;
+        statement_in_while_body = bind_right_to_left
+            | bind_left_to_right
+            | cond_block
+            | forto_cycle
+            | while_cycle
+            | repeat_until_cycle
+            | labeled_point
+            | goto_label
+            | input
+            | output
+            | continue_while
+            | exit_while;             
+            ;
+        //
+        statement____iteration_after_two = statement >> statement____iteration_after_two// + NEW
+            | statement >> statement;  // + NEW
+
+        tokenNAME__program_name = tokenNAME >> program_name;  // + NEW
+        tokenSEMICOLON__tokenBODY = tokenSEMICOLON >> tokenBODY;  // + NEW
+        tokenDATA__declaration = tokenDATA >> declaration;  // + NEW
+        tokenNAME__program_name__tokenSEMICOLON__tokenBODY = tokenNAME__program_name >> tokenSEMICOLON__tokenBODY;  // + NEW
+
+        program____part1 = tokenNAME__program_name__tokenSEMICOLON__tokenBODY >> tokenDATA__declaration  // + NEW
+                         | tokenNAME__program_name__tokenSEMICOLON__tokenBODY >> tokenDATA;  // + NEW
+
+        statement__tokenEND = statement >> tokenEND;  // + NEW
+        statement____iteration_after_two__tokenEND = statement____iteration_after_two >> tokenEND;  // + NEW
+        program____part2 = tokenSEMICOLON >> statement____iteration_after_two__tokenEND  // + NEW
+            | tokenSEMICOLON >> statement__tokenEND  // + NEW
+            | tokenSEMICOLON >> tokenEND;  // + NEW
+
+        program = program____part1 >> program____part2;  // + NEW
         //
         digit = digit_0 | digit_1 | digit_2 | digit_3 | digit_4 | digit_5 | digit_6 | digit_7 | digit_8 | digit_9;
         non_zero_digit = digit_1 | digit_2 | digit_3 | digit_4 | digit_5 | digit_6 | digit_7 | digit_8 | digit_9;
         unsigned_value = ((non_zero_digit >> *digit) | digit_0) >> BOUNDARIES;
-        value = (-sign) >> unsigned_value >> BOUNDARIES;
+        unsigned_value__non_terminal = SAME_RULE(unsigned_value);
+        //value = (-sign) >> unsigned_value >> BOUNDARIES;
+        value = sign >> unsigned_value__non_terminal >> BOUNDARIES // + (!) A->BC
+            | unsigned_value >> BOUNDARIES; // + (!) A->a
         letter_in_lower_case = a | b | c | d | e | f | g | h | i | j | k | l | m | n | o | p | q | r | s | t | u | v | w | x | y | z;
         letter_in_upper_case = A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z;
         ident = tokenUNDERSCORE >> letter_in_upper_case >> letter_in_upper_case >> letter_in_upper_case >> letter_in_upper_case >> letter_in_upper_case >> letter_in_upper_case >> letter_in_upper_case >> STRICT_BOUNDARIES;
-        label = letter_in_lower_case >> *letter_in_lower_case >> STRICT_BOUNDARIES;
+        label = letter_in_lower_case >> *letter_in_lower_case >> STRICT_BOUNDARIES; // !
         //
-        sign = sign_plus | sign_minus;
+        sign = sign_plus           // + (!)
+            | sign_minus;         // + (!)
         sign_plus = '-' >> BOUNDARIES;
         sign_minus = '+' >> BOUNDARIES;
         //
@@ -517,15 +633,15 @@ other_declaration_ident_____iteration
         body_for_true,
         body_for_false,
         cond_block,
-        cycle_begin_expression,
+        //cycle_begin_expression,
         cycle_counter,
-        cycle_counter_rl_init,
-        cycle_counter_lr_init,
+        cycle_counter_rl_expression,
+        cycle_counter_lr_expression,
         cycle_counter_init,
         cycle_counter_last_value,
         cycle_body,
         forto_cycle,
-        while_cycle_head_expression,
+        //while_cycle_head_expression,
         while_cycle,
         continue_while,
         exit_while,
@@ -605,7 +721,7 @@ size_t loadSource(char** text, char* fileName) {
     return fileSize;
 }
 
-int main() {
+int main(){
     char* text_;
     char fileName[64] = "file1.cwl";
     std::cout << "Enter file name(Enter \"f\" to use default \"file1.cwl\"):\n";
@@ -629,13 +745,13 @@ int main() {
 
     str_t_it begin = text.begin(), end = text.end();
 
+    //unsigned result;
+    bool success = qi::parse(begin, end, cwg/*, result*/);
 
-    bool success = qi::parse(begin, end, cwg);
-
-    if (!success) {
+    if(!success){
         std::cout << "\nParsing failed!\n";
         std::cout << "Error message: " << error_stream.str();
-    }
+	}
     else if (begin != end) {
         std::cout << "\nUnknown fragment ofter successs parse at: \"" << str_t(begin, end) << "\"\n";
     }
