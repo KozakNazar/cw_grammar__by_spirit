@@ -406,7 +406,7 @@ binary_action____iteration_after_two
         tokenWHILE__expression__statement_in_while_body = tokenWHILE__expression >> statement_in_while_body;                                                // + NEW
         tokenWHILE__expression__statement_in_while_body____iteration_after_two = tokenWHILE__expression >> statement_in_while_body____iteration_after_two;  // + NEW
         while_cycle = tokenWHILE__expression__statement_in_while_body____iteration_after_two >> tokenEND__tokenWHILE                                        // + NEW
-                     | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
+                     | tokenWHILE__expression__statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
                      | tokenWHILE__expression >> tokenEND__tokenWHILE;                                                                                      // + NEW
         //
         tokenUNTIL__group_expression = tokenUNTIL >> group_expression;                                     // + (!)
@@ -437,7 +437,7 @@ binary_action____iteration_after_two
             | tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND >> body_for_true                                               // +
             | tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value >> cycle_body__tokenSEMICOLON
             | tokenWHILE__expression__statement_in_while_body____iteration_after_two >> tokenEND__tokenWHILE                                        // + NEW
-            | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
+            | tokenWHILE__expression__statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
             | tokenWHILE__expression >> tokenEND__tokenWHILE                                                                                      // + NEW
             | tokenREPEAT__statement____iteration_after_two >> tokenUNTIL__group_expression // +
             | tokenREPEAT__statement >> tokenUNTIL__group_expression                       // +
@@ -455,7 +455,7 @@ binary_action____iteration_after_two
             | tokenIF__tokenGROUPEXPRESSIONBEGIN__expression__tokenGROUPEXPRESSIONEND >> body_for_true                                              // +
             | tokenFOR__cycle_counter_init__tokenTO__cycle_counter_last_value >> cycle_body__tokenSEMICOLON
             | tokenWHILE__expression__statement_in_while_body____iteration_after_two >> tokenEND__tokenWHILE                                        // + NEW
-            | tokenWHILE__expression >> statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
+            | tokenWHILE__expression__statement_in_while_body >> tokenEND__tokenWHILE                                                            // + NEW
             | tokenWHILE__expression >> tokenEND__tokenWHILE                                                                                      // + NEW
             | tokenREPEAT__statement____iteration_after_two >> tokenUNTIL__group_expression // +
             | tokenREPEAT__statement >> tokenUNTIL__group_expression                       // +
